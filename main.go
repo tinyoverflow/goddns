@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+var latestIpAddress string
+
 func main() {
 	logHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})
 	logger := slog.New(logHandler)
@@ -59,10 +61,22 @@ func fetchAndUpdate(_ context.Context, logger *slog.Logger, ret retriever.Retrie
 		return err
 	}
 
-	logger.Debug("updating ip address", "ip", ip)
+	if ip == latestIpAddress {
+		logger.Debug("ip address did not change")
+		return nil
+	}
+
+	logger.Info(
+		"detected new ip address",
+		"new_ip", ip,
+		"old_ip", latestIpAddress,
+	)
+
 	if err := prv.SetIPAddress(ip); err != nil {
 		return err
 	}
+
+	latestIpAddress = ip
 
 	logger.Info("updated ip address", "ip", ip)
 	return nil
