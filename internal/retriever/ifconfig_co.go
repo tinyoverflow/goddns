@@ -16,7 +16,7 @@ func (r IfConfigRetriever) GetIPAddress() (string, error) {
 	}
 	defer res.Body.Close()
 
-	var data map[string]interface{}
+	var data map[string]any
 	if json.NewDecoder(res.Body).Decode(&data) != nil {
 		return "", err
 	}
