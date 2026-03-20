@@ -1,0 +1,64 @@
+# Global poll interval in seconds (default: 5m).
+# Can be overridden per instance.
+interval = "5m"
+
+# ---------------------------------------------------------------------------
+# Retrievers - [retriever.<name>]
+#
+# Define named retriever configurations here, then reference them
+# from instances by their name. Any field can be overridden per instance.
+# ---------------------------------------------------------------------------
+
+[retriever.home]
+type = "ifconfigco"
+# url = ""  # optional, defaults to https://ifconfig.co
+
+[retriever.office]
+type       = "unifi"
+base_url   = "https://10.0.0.1"
+verify_tls = false
+api_token  = "unifi-token"
+site_id    = "default"  # optional, defaults to "default"
+
+# ---------------------------------------------------------------------------
+# Providers - [provider.<name>]
+#
+# Define named provider configurations here, then reference them
+# from instances by their name. Any field can be overridden per instance.
+# ---------------------------------------------------------------------------
+
+[provider.my-provider]
+type      = "hetzner_cloud"
+api_token = "hetzner-cloud-token"
+zone      = "homelab.com"  # can be omitted and supplied per instance instead
+rr_name   = "@"
+
+# ---------------------------------------------------------------------------
+# Instances - [instance.<name>]
+#
+# Each instance ties one retriever to one or more providers.
+# ---------------------------------------------------------------------------
+
+[instance.homelab]
+interval = "5s"  # optional: overrides the global interval
+
+[instance.homelab.retriever]
+name = "home"
+
+[[instance.homelab.provider]]
+name = "my-provider"
+
+[[instance.homelab.provider]]
+name = "my-provider"
+zone = "another.homelab.com"  # same account, second zone
+
+
+[instance.office]
+# no interval override — uses global default
+
+[instance.office.retriever]
+name = "office"
+
+[[instance.office.provider]]
+name = "my-provider"
+zone = "office.com"

@@ -1,43 +1,32 @@
 package config
 
 import (
-	"os"
-	"strconv"
+	"fmt"
+
+	"github.com/BurntSushi/toml"
 )
 
 type Config struct {
-	Interval    int
-	HCloudToken string
-	HCloudZone  string
+	Interval   string                    `toml:"interval"`
+	Retrievers map[string]map[string]any `toml:"retriever"`
+	Providers  map[string]map[string]any `toml:"provider"`
+	Instances  map[string]InstanceConfig `toml:"instance"`
 }
 
-func Load() Config {
-	return Config{
-		Interval:    getEnvAsInt("GODDNS_INTERVAL", 300),
-		HCloudToken: getEnvAsString("GODDNS_HCLOUD_TOKEN", ""),
-		HCloudZone:  getEnvAsString("GODDNS_HCLOUD_ZONE", ""),
-	}
+type InstanceConfig struct {
+	Interval  *string          `toml:"interval"`
+	Retriever map[string]any   `toml:"retriever"`
+	Providers []map[string]any `toml:"provider"`
 }
 
-func getEnvAsString(key string, defaultValue string) string {
-	val, exists := os.LookupEnv(key)
-	if !exists {
-		return defaultValue
+func Load(path string) (Config, error) {
+	cfg := Config{
+		Interval: "5m",
 	}
 
-	return val
-}
-
-func getEnvAsInt(key string, fallback int) int {
-	val, exists := os.LookupEnv(key)
-	if !exists {
-		return fallback
+	if _, err := toml.DecodeFile(path, &cfg); err != nil {
+		return Config{}, fmt.Errorf("decoding config file: %w", err)
 	}
 
-	valInt, err := strconv.Atoi(val)
-	if err != nil {
-		return fallback
-	}
-
-	return valInt
+	return cfg, nil
 }

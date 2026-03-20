@@ -3,12 +3,38 @@ package provider
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
 type HetznerCloudProvider struct {
-	Token string
-	Zone  string
+	Token  string
+	Zone   string
+	RRName string
+}
+
+func NewHetznerCloudProviderFromConfig(params map[string]any) (Provider, error) {
+	apiToken, _ := params["api_token"].(string)
+	zone, _ := params["zone"].(string)
+	rrName, _ := params["rr_name"].(string)
+
+	if apiToken == "" {
+		return nil, fmt.Errorf("api_token is required")
+	}
+
+	if zone == "" {
+		return nil, fmt.Errorf("zone is required")
+	}
+
+	if rrName == "" {
+		return nil, fmt.Errorf("rr_name is required")
+	}
+
+	return HetznerCloudProvider{
+		Token:  apiToken,
+		Zone:   zone,
+		RRName: rrName,
+	}, nil
 }
 
 func (p HetznerCloudProvider) SetIPAddress(ip string) error {
@@ -36,11 +62,8 @@ func (p HetznerCloudProvider) SetIPAddress(ip string) error {
 		return err
 	}
 
-	req, err := http.NewRequest(
-		http.MethodPost,
-		"https://api.hetzner.cloud/v1/zones/"+p.Zone+"/rrsets/@/A/actions/set_records",
-		bytes.NewBuffer(reqDataBytes),
-	)
+	url := "https://api.hetzner.cloud/v1/zones/" + p.Zone + "/rrsets/" + p.RRName + "/A/actions/set_records"
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(reqDataBytes))
 	if err != nil {
 		return err
 	}
@@ -52,6 +75,11 @@ func (p HetznerCloudProvider) SetIPAddress(ip string) error {
 	if err != nil {
 		return err
 	}
+
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("expected status 200, got %d", res.StatusCode)
+	}
+
 	defer res.Body.Close()
 
 	var data map[string]any

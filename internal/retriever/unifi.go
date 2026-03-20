@@ -8,27 +8,45 @@ import (
 )
 
 type UnifiRetriever struct {
-	baseURL string
-	apiKey  string
-	siteID  string
-	client  *http.Client
+	baseURL  string
+	apiToken string
+	siteID   string
+	client   *http.Client
 }
 
-func NewUnifiRetriever(host, apiKey, siteID string) UnifiRetriever {
+func NewUnifiRetrieverFromConfig(params map[string]any) (Retriever, error) {
+	baseURL, _ := params["base_url"].(string)
+	apiToken, _ := params["api_token"].(string)
+	siteID, _ := params["site_id"].(string)
+	verifyTLS, _ := params["verify_tls"].(bool)
+
+	if baseURL == "" {
+		return nil, fmt.Errorf("unifi retriever: base_url is required")
+	}
+
+	if apiToken == "" {
+		return nil, fmt.Errorf("unifi retriever: api_token is required")
+	}
+
 	if siteID == "" {
 		siteID = "default"
 	}
-	
+
+	tlsConfig := &tls.Config{}
+	if !verifyTLS {
+		tlsConfig.InsecureSkipVerify = true
+	}
+
 	return UnifiRetriever{
-		baseURL: "https://" + host,
-		apiKey:  apiKey,
-		siteID:  siteID,
+		baseURL:  baseURL,
+		apiToken: apiToken,
+		siteID:   siteID,
 		client: &http.Client{
 			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // UDM uses self-signed certs
+				TLSClientConfig: tlsConfig,
 			},
 		},
-	}
+	}, nil
 }
 
 func (r UnifiRetriever) GetIPAddress() (string, error) {
@@ -39,7 +57,7 @@ func (r UnifiRetriever) GetIPAddress() (string, error) {
 		return "", err
 	}
 
-	req.Header.Set("X-API-KEY", r.apiKey)
+	req.Header.Set("X-API-KEY", r.apiToken)
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := r.client.Do(req)

@@ -11,11 +11,15 @@ func TestIfConfigRetriever_GetIPAddress(t *testing.T) {
 	const expectedIP = "203.0.113.42"
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/json" {
+			t.Fatalf("unexpected request path: %v", r.URL.Path)
+		}
+
 		json.NewEncoder(w).Encode(map[string]any{"ip": expectedIP})
 	}))
 	defer server.Close()
 
-	ret := IfConfigRetriever{client: server.Client(), url: server.URL}
+	ret := IfConfigRetriever{client: server.Client(), BaseURL: server.URL}
 
 	ip, err := ret.GetIPAddress()
 	if err != nil {
@@ -33,7 +37,7 @@ func TestIfConfigRetriever_GetIPAddress_InvalidJSON(t *testing.T) {
 	}))
 	defer server.Close()
 
-	ret := IfConfigRetriever{client: server.Client(), url: server.URL}
+	ret := IfConfigRetriever{client: server.Client(), BaseURL: server.URL}
 
 	_, err := ret.GetIPAddress()
 	if err == nil {

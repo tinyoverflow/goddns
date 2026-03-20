@@ -6,8 +6,18 @@ import (
 )
 
 type IfConfigRetriever struct {
-	client *http.Client
-	url    string
+	client  *http.Client
+	BaseURL string
+}
+
+func NewIfConfigCoRetrieverFromConfig(params map[string]any) (Retriever, error) {
+	baseURL, _ := params["base_url"].(string)
+
+	if baseURL == "" {
+		baseURL = "https://ifconfig.co"
+	}
+
+	return IfConfigRetriever{BaseURL: baseURL}, nil
 }
 
 func (r IfConfigRetriever) GetIPAddress() (string, error) {
@@ -16,12 +26,7 @@ func (r IfConfigRetriever) GetIPAddress() (string, error) {
 		client = http.DefaultClient
 	}
 
-	url := r.url
-	if url == "" {
-		url = "https://ifconfig.co/json"
-	}
-
-	res, err := client.Get(url)
+	res, err := client.Get(r.BaseURL + "/json")
 	if err != nil {
 		return "", err
 	}

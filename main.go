@@ -2,19 +2,27 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"goddns/internal/config"
+	"goddns/internal/factory"
 	"goddns/internal/provider"
 	"goddns/internal/retriever"
 	"log/slog"
 	"os"
+	"sync"
 	"time"
 )
 
-var latestIpAddress string
-
 func main() {
-	logHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})
+	logHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})
 	logger := slog.New(logHandler)
+
+	factory.RegisterRetriever("unifi", retriever.NewUnifiRetrieverFromConfig)
+	factory.RegisterRetriever("ifconfigco", retriever.NewIfConfigCoRetrieverFromConfig)
+
+	factory.RegisterProvider("hetzner_cloud", provider.NewHetznerCloudProviderFromConfig)
 
 	if err := run(context.Background(), logger); err != nil {
 		slog.Error("error running ddns updater", "error", err.Error())
@@ -25,59 +33,106 @@ func main() {
 func run(ctx context.Context, logger *slog.Logger) error {
 	logger.Info("starting goddns")
 
-	cfg := config.Load()
-	logger.Info(
-		"loaded config",
-		"interval", cfg.Interval,
-		"zone", cfg.HCloudZone,
-	)
-
-	ret := retriever.IfConfigRetriever{}
-	prv := provider.HetznerCloudProvider{
-		Token: cfg.HCloudToken,
-		Zone:  cfg.HCloudZone,
+	configPath := "config.toml"
+	if p := os.Getenv("GODDNS_CONFIG"); p != "" {
+		configPath = p
 	}
 
-	tickDuration := time.Duration(cfg.Interval) * time.Second
-	ticker := time.NewTicker(tickDuration)
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		return fmt.Errorf("loading config: %w", err)
+	}
+
+	logger.Info(
+		"loaded config",
+		"default_interval", cfg.Interval,
+		"retrievers", len(cfg.Retrievers),
+		"providers", len(cfg.Providers),
+		"instances", len(cfg.Instances),
+	)
+
+	var wg sync.WaitGroup
+	for name, inst := range cfg.Instances {
+		interval := cfg.Interval
+		if inst.Interval != nil {
+			interval = *inst.Interval
+		}
+
+		ret, err := factory.BuildRetriever(cfg.Retrievers, inst.Retriever)
+		if err != nil {
+			return fmt.Errorf("instance %q: %w", name, err)
+		}
+
+		providers, err := factory.BuildProviders(cfg.Providers, inst.Providers)
+		if err != nil {
+			return fmt.Errorf("instance %q: %w", name, err)
+		}
+
+		logger.Info(
+			"initializing instance",
+			"instance", name,
+			"interval", interval,
+			"retriever", inst.Retriever["name"],
+			"providers", len(inst.Providers),
+		)
+
+		dur, err := time.ParseDuration(interval)
+		if err != nil {
+			return fmt.Errorf("invalid duration format %q", interval)
+		}
+
+		wg.Add(1)
+		go func(name string, ret retriever.Retriever, providers []provider.Provider, dur time.Duration) {
+			defer wg.Done()
+			runInstance(ctx, logger.With("instance", name), dur, ret, providers)
+		}(name, ret, providers, dur)
+	}
+
+	wg.Wait()
+	return nil
+}
+
+func runInstance(ctx context.Context, logger *slog.Logger, dur time.Duration, ret retriever.Retriever, providers []provider.Provider) {
+	var latestIP string
+	ticker := time.NewTicker(dur)
+	defer ticker.Stop()
 
 	for {
+		if err := fetchAndUpdate(ctx, logger, ret, providers, &latestIP); err != nil {
+			logger.Error("fetching and updating ip address", "error", err)
+		}
+
 		select {
 		case <-ctx.Done():
-			return nil
+			return
 		case <-ticker.C:
-			err := fetchAndUpdate(ctx, logger, ret, prv)
-			if err != nil {
-				slog.Error("error fetching and updating", "error", err.Error())
-			}
 		}
 	}
 }
 
-func fetchAndUpdate(_ context.Context, logger *slog.Logger, ret retriever.Retriever, prv provider.Provider) error {
+func fetchAndUpdate(_ context.Context, logger *slog.Logger, ret retriever.Retriever, providers []provider.Provider, latestIP *string) error {
 	logger.Debug("fetching ip address")
 	ip, err := ret.GetIPAddress()
 	if err != nil {
 		return err
 	}
 
-	if ip == latestIpAddress {
+	logger.Debug("received ip address", "ip", ip)
+
+	if ip == *latestIP {
 		logger.Debug("ip address did not change")
 		return nil
 	}
 
-	logger.Info(
-		"detected new ip address",
-		"new_ip", ip,
-		"old_ip", latestIpAddress,
-	)
+	logger.Info("detected new ip address", "new_ip", ip, "old_ip", *latestIP)
 
-	if err := prv.SetIPAddress(ip); err != nil {
-		return err
+	for _, prv := range providers {
+		if err := prv.SetIPAddress(ip); err != nil {
+			return err
+		}
 	}
 
-	latestIpAddress = ip
-
+	*latestIP = ip
 	logger.Info("updated ip address", "ip", ip)
 	return nil
 }
