@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"goddns/internal/config"
-	"goddns/internal/factory"
-	"goddns/internal/provider"
-	"goddns/internal/retriever"
+	"goddns/internal/plugin"
 	"log/slog"
 	"os"
 	"sync"
@@ -18,11 +16,6 @@ func main() {
 		Level: slog.LevelDebug,
 	})
 	logger := slog.New(logHandler)
-
-	factory.RegisterRetriever("unifi", retriever.NewUnifiRetrieverFromConfig)
-	factory.RegisterRetriever("ifconfigco", retriever.NewIfConfigCoRetrieverFromConfig)
-
-	factory.RegisterProvider("hetzner_cloud", provider.NewHetznerCloudProviderFromConfig)
 
 	if err := run(context.Background(), logger); err != nil {
 		slog.Error("error running ddns updater", "error", err.Error())
@@ -58,12 +51,12 @@ func run(ctx context.Context, logger *slog.Logger) error {
 			interval = *inst.Interval
 		}
 
-		ret, err := factory.BuildRetriever(cfg.Retrievers, inst.Retriever)
+		ret, err := plugin.BuildRetriever(cfg.Retrievers, inst.Retriever)
 		if err != nil {
 			return fmt.Errorf("instance %q: %w", name, err)
 		}
 
-		providers, err := factory.BuildProviders(cfg.Providers, inst.Providers)
+		providers, err := plugin.BuildProviders(cfg.Providers, inst.Providers)
 		if err != nil {
 			return fmt.Errorf("instance %q: %w", name, err)
 		}
@@ -82,7 +75,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		}
 
 		wg.Add(1)
-		go func(name string, ret retriever.Retriever, providers []provider.Provider, dur time.Duration) {
+		go func(name string, ret plugin.Retriever, providers []plugin.Provider, dur time.Duration) {
 			defer wg.Done()
 			runInstance(ctx, logger.With("instance", name), dur, ret, providers)
 		}(name, ret, providers, dur)
@@ -92,7 +85,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	return nil
 }
 
-func runInstance(ctx context.Context, logger *slog.Logger, dur time.Duration, ret retriever.Retriever, providers []provider.Provider) {
+func runInstance(ctx context.Context, logger *slog.Logger, dur time.Duration, ret plugin.Retriever, providers []plugin.Provider) {
 	var latestIP string
 	ticker := time.NewTicker(dur)
 	defer ticker.Stop()
@@ -110,7 +103,7 @@ func runInstance(ctx context.Context, logger *slog.Logger, dur time.Duration, re
 	}
 }
 
-func fetchAndUpdate(_ context.Context, logger *slog.Logger, ret retriever.Retriever, providers []provider.Provider, latestIP *string) error {
+func fetchAndUpdate(_ context.Context, logger *slog.Logger, ret plugin.Retriever, providers []plugin.Provider, latestIP *string) error {
 	logger.Debug("fetching ip address")
 	ip, err := ret.GetIPAddress()
 	if err != nil {
