@@ -1,4 +1,4 @@
-package retriever
+package plugins
 
 import (
 	"encoding/json"
@@ -24,7 +24,7 @@ func TestUnifiRetriever_GetIPAddress(t *testing.T) {
 	}))
 	defer server.Close()
 
-	ret := UnifiRetriever{baseURL: server.URL, apiToken: testAPIKey, siteID: "default", client: server.Client()}
+	ret := unifiRetriever{baseURL: server.URL, apiToken: testAPIKey, siteID: "default", client: server.Client()}
 
 	ip, err := ret.GetIPAddress()
 	if err != nil {
@@ -42,7 +42,7 @@ func TestUnifiRetriever_GetIPAddress_Unauthorized(t *testing.T) {
 	}))
 	defer server.Close()
 
-	ret := UnifiRetriever{baseURL: server.URL, apiToken: "wrong-key", siteID: "default", client: server.Client()}
+	ret := unifiRetriever{baseURL: server.URL, apiToken: "wrong-key", siteID: "default", client: server.Client()}
 
 	_, err := ret.GetIPAddress()
 	if err == nil {
@@ -60,7 +60,7 @@ func TestUnifiRetriever_GetIPAddress_MissingWanIP(t *testing.T) {
 	}))
 	defer server.Close()
 
-	ret := UnifiRetriever{baseURL: server.URL, apiToken: "key", siteID: "default", client: server.Client()}
+	ret := unifiRetriever{baseURL: server.URL, apiToken: "key", siteID: "default", client: server.Client()}
 
 	_, err := ret.GetIPAddress()
 	if err == nil {
@@ -86,7 +86,7 @@ func TestUnifiRetriever_GetIPAddress_CustomSiteID(t *testing.T) {
 	}))
 	defer server.Close()
 
-	ret := UnifiRetriever{baseURL: server.URL, apiToken: "key", siteID: customSite, client: server.Client()}
+	ret := unifiRetriever{baseURL: server.URL, apiToken: "key", siteID: customSite, client: server.Client()}
 
 	_, err := ret.GetIPAddress()
 	if err != nil {

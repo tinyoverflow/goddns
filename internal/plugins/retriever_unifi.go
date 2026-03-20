@@ -1,46 +1,57 @@
-package retriever
+package plugins
 
 import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"goddns/internal/plugin"
 	"net/http"
 )
 
-type UnifiRetriever struct {
+// UnifiConfig holds the configuration parameters for the unifi retriever.
+type UnifiConfig struct {
+	BaseURL   string `json:"base_url"   required:"true"   doc:"Unifi controller base URL (e.g. https://192.168.1.1)"`
+	APIToken  string `json:"api_token"  required:"true"   doc:"API authentication token"`
+	SiteID    string `json:"site_id"    default:"default" doc:"Site ID"`
+	VerifyTLS bool   `json:"verify_tls" default:"false"   doc:"Enable TLS certificate verification"`
+}
+
+type unifiRetriever struct {
 	baseURL  string
 	apiToken string
 	siteID   string
 	client   *http.Client
 }
 
-func NewUnifiRetrieverFromConfig(params map[string]any) (Retriever, error) {
-	baseURL, _ := params["base_url"].(string)
-	apiToken, _ := params["api_token"].(string)
-	siteID, _ := params["site_id"].(string)
-	verifyTLS, _ := params["verify_tls"].(bool)
+func init() {
+	plugin.RegisterRetriever("unifi", newUnifiFromConfig, UnifiConfig{})
+}
 
-	if baseURL == "" {
+func newUnifiFromConfig(params map[string]any) (plugin.Retriever, error) {
+	cfg, err := plugin.Decode[UnifiConfig](params)
+	if err != nil {
+		return nil, fmt.Errorf("unifi retriever: %w", err)
+	}
+
+	if cfg.BaseURL == "" {
 		return nil, fmt.Errorf("unifi retriever: base_url is required")
 	}
-
-	if apiToken == "" {
+	if cfg.APIToken == "" {
 		return nil, fmt.Errorf("unifi retriever: api_token is required")
 	}
-
-	if siteID == "" {
-		siteID = "default"
+	if cfg.SiteID == "" {
+		cfg.SiteID = "default"
 	}
 
 	tlsConfig := &tls.Config{}
-	if !verifyTLS {
+	if !cfg.VerifyTLS {
 		tlsConfig.InsecureSkipVerify = true
 	}
 
-	return UnifiRetriever{
-		baseURL:  baseURL,
-		apiToken: apiToken,
-		siteID:   siteID,
+	return unifiRetriever{
+		baseURL:  cfg.BaseURL,
+		apiToken: cfg.APIToken,
+		siteID:   cfg.SiteID,
 		client: &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConfig,
@@ -49,7 +60,7 @@ func NewUnifiRetrieverFromConfig(params map[string]any) (Retriever, error) {
 	}, nil
 }
 
-func (r UnifiRetriever) GetIPAddress() (string, error) {
+func (r unifiRetriever) GetIPAddress() (string, error) {
 	url := fmt.Sprintf("%s/proxy/network/api/s/%s/stat/health", r.baseURL, r.siteID)
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
@@ -89,4 +100,4 @@ func (r UnifiRetriever) GetIPAddress() (string, error) {
 	return "", fmt.Errorf("wan_ip not found in health response")
 }
 
-var _ Retriever = UnifiRetriever{}
+var _ plugin.Retriever = unifiRetriever{}

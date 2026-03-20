@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"goddns/internal/config"
 	"goddns/internal/plugin"
+	_ "goddns/internal/plugins"
 	"log/slog"
 	"os"
 	"sync"

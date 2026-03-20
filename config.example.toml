@@ -49,8 +49,9 @@ name = "home"
 name = "my-provider"
 
 [[instance.homelab.provider]]
-name = "my-provider"
-zone = "another.homelab.com"  # same account, second zone
+name    = "my-provider"
+zone    = "homelab.net" # same account, second zone
+rr_name = "subdomain"
 
 
 [instance.office]

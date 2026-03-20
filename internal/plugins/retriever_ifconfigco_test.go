@@ -1,4 +1,4 @@
-package retriever
+package plugins
 
 import (
 	"encoding/json"
@@ -19,7 +19,7 @@ func TestIfConfigRetriever_GetIPAddress(t *testing.T) {
 	}))
 	defer server.Close()
 
-	ret := IfConfigRetriever{client: server.Client(), BaseURL: server.URL}
+	ret := ifConfigRetriever{client: server.Client(), baseURL: server.URL}
 
 	ip, err := ret.GetIPAddress()
 	if err != nil {
@@ -37,7 +37,7 @@ func TestIfConfigRetriever_GetIPAddress_InvalidJSON(t *testing.T) {
 	}))
 	defer server.Close()
 
-	ret := IfConfigRetriever{client: server.Client(), BaseURL: server.URL}
+	ret := ifConfigRetriever{client: server.Client(), baseURL: server.URL}
 
 	_, err := ret.GetIPAddress()
 	if err == nil {

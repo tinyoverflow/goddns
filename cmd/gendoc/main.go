@@ -6,6 +6,7 @@ package main
 import (
 	"fmt"
 	"goddns/internal/plugin"
+	_ "goddns/internal/plugins"
 	"os"
 	"reflect"
 	"slices"
@@ -13,18 +14,23 @@ import (
 )
 
 func main() {
+	retrieverConfigTypes := plugin.RetrieverConfigTypes()
+	providerConfigTypes := plugin.ProviderConfigTypes()
+
 	var b strings.Builder
 
 	b.WriteString("# Plugin Parameters\n\n")
-	b.WriteString("This file is auto-generated. Run `go run ./cmd/gendoc` to regenerate.\n\n")
+
+	writeTableOfContents(&b, "Retrievers", retrieverConfigTypes)
+	writeTableOfContents(&b, "Providers", providerConfigTypes)
 
 	b.WriteString("## Retrievers\n\n")
-	writeSection(&b, plugin.RetrieverConfigTypes())
+	writeSection(&b, retrieverConfigTypes)
 
 	b.WriteString("## Providers\n\n")
-	writeSection(&b, plugin.ProviderConfigTypes())
+	writeSection(&b, providerConfigTypes)
 
-	const outPath = "docs/parameters.md"
+	const outPath = "docs/PARAMETERS.md"
 	if err := os.MkdirAll("docs", 0o755); err != nil {
 		fmt.Fprintf(os.Stderr, "creating docs directory: %v\n", err)
 		os.Exit(1)
@@ -36,6 +42,22 @@ func main() {
 	}
 
 	fmt.Printf("wrote %s\n", outPath)
+}
+
+func writeTableOfContents(b *strings.Builder, header string, types map[string]reflect.Type) {
+	names := make([]string, 0, len(types))
+	for name := range types {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+
+	fmt.Fprintf(b, "- [%s](#%s)\n", header, strings.ToLower(header))
+
+	for _, name := range names {
+		fmt.Fprintf(b, "  - [%s](#%s)\n", name, name)
+	}
+
+	b.WriteString("\n")
 }
 
 func writeSection(b *strings.Builder, types map[string]reflect.Type) {
