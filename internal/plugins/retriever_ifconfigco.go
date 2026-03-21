@@ -6,7 +6,6 @@ import (
 	"net/http"
 )
 
-// IfConfigCoConfig holds the configuration parameters for the ifconfigco retriever.
 type IfConfigCoConfig struct {
 	BaseURL string `json:"base_url" default:"https://ifconfig.co" doc:"API base URL"`
 }

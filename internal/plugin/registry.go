@@ -37,8 +37,6 @@ func RegisterRetriever(name string, f retrieverFactory, configExample any) {
 	}
 }
 
-// ProviderConfigTypes returns the registered config struct type for each provider name.
-// Used by cmd/gendoc to generate parameter documentation.
 func ProviderConfigTypes() map[string]reflect.Type {
 	types := make(map[string]reflect.Type, len(providerRegistry))
 	for name, entry := range providerRegistry {
@@ -47,8 +45,6 @@ func ProviderConfigTypes() map[string]reflect.Type {
 	return types
 }
 
-// RetrieverConfigTypes returns the registered config struct type for each retriever name.
-// Used by cmd/gendoc to generate parameter documentation.
 func RetrieverConfigTypes() map[string]reflect.Type {
 	types := make(map[string]reflect.Type, len(retrieverRegistry))
 	for name, entry := range retrieverRegistry {

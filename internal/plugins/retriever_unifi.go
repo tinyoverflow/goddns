@@ -8,7 +8,6 @@ import (
 	"net/http"
 )
 
-// UnifiConfig holds the configuration parameters for the unifi retriever.
 type UnifiConfig struct {
 	BaseURL   string `json:"base_url"   required:"true"   doc:"Unifi controller base URL (e.g. https://192.168.1.1)"`
 	APIToken  string `json:"api_token"  required:"true"   doc:"API authentication token"`

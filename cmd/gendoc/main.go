@@ -1,6 +1,3 @@
-// gendoc generates docs/parameters.md by reflecting on registered plugin config structs.
-//
-// Usage: go run ./cmd/gendoc
 package main
 
 import (

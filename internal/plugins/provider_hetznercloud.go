@@ -8,7 +8,6 @@ import (
 	"net/http"
 )
 
-// HetznerCloudConfig holds the configuration parameters for the hetzner_cloud provider.
 type HetznerCloudConfig struct {
 	APIToken string `json:"api_token" required:"true" doc:"Hetzner Cloud API token"`
 	Zone     string `json:"zone"      required:"true" doc:"DNS zone (e.g. homelab.com)"`
