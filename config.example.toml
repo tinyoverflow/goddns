@@ -28,8 +28,8 @@ site_id    = "default"  # optional, defaults to "default"
 # ---------------------------------------------------------------------------
 
 [provider.my-provider]
-type      = "hetzner_cloud"
-api_token = "hetzner-cloud-token"
+type      = "hetznercloud"
+api_token = "hetznercloud-token"
 zone      = "homelab.com"  # can be omitted and supplied per instance instead
 rr_name   = "@"
 

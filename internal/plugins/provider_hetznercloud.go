@@ -30,7 +30,7 @@ type hetznerCloudProviderRequestRecord struct {
 }
 
 func init() {
-	plugin.RegisterProvider("hetzner_cloud", newHetznerCloudFromConfig, HetznerCloudConfig{})
+	plugin.RegisterProvider("hetznercloud", newHetznerCloudFromConfig, HetznerCloudConfig{})
 }
 
 func newHetznerCloudFromConfig(params map[string]any) (plugin.Provider, error) {
@@ -40,15 +40,15 @@ func newHetznerCloudFromConfig(params map[string]any) (plugin.Provider, error) {
 	}
 
 	if cfg.APIToken == "" {
-		return nil, fmt.Errorf("hetzner_cloud: api_token is required")
+		return nil, fmt.Errorf("hetznercloud: api_token is required")
 	}
 
 	if cfg.Zone == "" {
-		return nil, fmt.Errorf("hetzner_cloud: zone is required")
+		return nil, fmt.Errorf("hetznercloud: zone is required")
 	}
 
 	if cfg.RRName == "" {
-		return nil, fmt.Errorf("hetzner_cloud: rr_name is required")
+		return nil, fmt.Errorf("hetznercloud: rr_name is required")
 	}
 
 	return hetznerCloudProvider{
