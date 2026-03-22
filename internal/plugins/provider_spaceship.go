@@ -12,16 +12,28 @@ type spaceshipConfig struct {
 	APIKey    string `json:"api_key"    required:"true" doc:"Spaceship API key"`
 	APISecret string `json:"api_secret" required:"true" doc:"Spaceship API secret"`
 	Domain    string `json:"domain"     required:"true" doc:"The domain name (e.g. example.com)"`
-	Subdomain string `json:"subdomain"       required:"true" doc:"The (sub)domain name"`
-	TTL       int    `json:"ttl"        default:"3600" doc:"The TTL (Time to live) for the entry"`
+	Subdomain string `json:"subdomain"  required:"true" doc:"The (sub)domain name"`
+	TTL       int    `json:"ttl"        default:"3600"  doc:"The TTL (Time to live) for the entry"`
 }
 
 type spaceshipProvider struct {
 	apiKey    string
 	apiSecret string
-	subdomain string
 	domain    string
+	subdomain string
 	ttl       int
+}
+
+type spaceshipProviderRequest struct {
+	Force bool                           `json:"force"`
+	Items []spaceshipProviderRequestItem `json:"items"`
+}
+
+type spaceshipProviderRequestItem struct {
+	Type    string `json:"type"`
+	Name    string `json:"name"`
+	TTL     int    `json:"ttl"`
+	Address string `json:"address"`
 }
 
 func init() {
@@ -62,22 +74,15 @@ func newSpaceshipFromConfig(params map[string]any) (plugin.Provider, error) {
 func (p spaceshipProvider) SetIPAddress(ip string) error {
 	client := http.DefaultClient
 
-	reqData := struct {
-		Force bool `json:"force"`
-		Items []struct {
-			Type    string `json:"type"`
-			Name    string `json:"name"`
-			TTL     int    `json:"ttl"`
-			Address string `json:"address"`
-		} `json:"items"`
-	}{
-		Items: []struct {
-			Type    string `json:"type"`
-			Name    string `json:"name"`
-			TTL     int    `json:"ttl"`
-			Address string `json:"address"`
-		}{
-			{Type: "A", Name: p.subdomain, TTL: p.ttl, Address: ip},
+	reqData := spaceshipProviderRequest{
+		Force: true,
+		Items: []spaceshipProviderRequestItem{
+			{
+				Type:    "A",
+				Name:    p.subdomain,
+				Address: ip,
+				TTL:     p.ttl,
+			},
 		},
 	}
 
@@ -100,16 +105,10 @@ func (p spaceshipProvider) SetIPAddress(ip string) error {
 	if err != nil {
 		return err
 	}
-
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusNoContent {
 		return fmt.Errorf("expected status 204, got %d", res.StatusCode)
-	}
-
-	var data map[string]any
-	if json.NewDecoder(res.Body).Decode(&data) != nil {
-		return err
 	}
 
 	return nil
