@@ -5,7 +5,7 @@
   - [unifi](#unifi)
 
 - [Providers](#providers)
-  - [hetzner_cloud](#hetzner_cloud)
+  - [hetznercloud](#hetznercloud)
   - [spaceship](#spaceship)
 
 ## Retrievers
@@ -27,7 +27,7 @@
 
 ## Providers
 
-### `hetzner_cloud`
+### `hetznercloud`
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
