@@ -20,6 +20,15 @@ type hetznerCloudProvider struct {
 	rrName string
 }
 
+type hetznerCloudProviderRequest struct {
+	Records []hetznerCloudProviderRequestRecord `json:"records"`
+}
+
+type hetznerCloudProviderRequestRecord struct {
+	Value   string `json:"value"`
+	Comment string `json:"comment"`
+}
+
 func init() {
 	plugin.RegisterProvider("hetzner_cloud", newHetznerCloudFromConfig, HetznerCloudConfig{})
 }
@@ -33,9 +42,11 @@ func newHetznerCloudFromConfig(params map[string]any) (plugin.Provider, error) {
 	if cfg.APIToken == "" {
 		return nil, fmt.Errorf("hetzner_cloud: api_token is required")
 	}
+
 	if cfg.Zone == "" {
 		return nil, fmt.Errorf("hetzner_cloud: zone is required")
 	}
+
 	if cfg.RRName == "" {
 		return nil, fmt.Errorf("hetzner_cloud: rr_name is required")
 	}
@@ -50,17 +61,9 @@ func newHetznerCloudFromConfig(params map[string]any) (plugin.Provider, error) {
 func (p hetznerCloudProvider) SetIPAddress(ip string) error {
 	client := http.DefaultClient
 
-	reqData := struct {
-		Records []struct {
-			Value   string `json:"value"`
-			Comment string `json:"comment"`
-		} `json:"records"`
-	}{
-		Records: []struct {
-			Value   string `json:"value"`
-			Comment string `json:"comment"`
-		}{
-			{Value: ip, Comment: "Updated by goddns"},
+	reqData := hetznerCloudProviderRequest{
+		Records: []hetznerCloudProviderRequestRecord{
+			{Value: ip},
 		},
 	}
 
@@ -69,13 +72,14 @@ func (p hetznerCloudProvider) SetIPAddress(ip string) error {
 		return err
 	}
 
-	url := "https://api.hetzner.cloud/v1/zones/" + p.zone + "/rrsets/" + p.rrName + "/A/actions/set_records"
+	url := fmt.Sprintf("https://api.hetzner.cloud/v1/zones/%v/rrsets/%v/A/actions/set_records", p.zone, p.rrName)
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(reqDataBytes))
 	if err != nil {
 		return err
 	}
 
-	req.Header.Add("Authorization", "Bearer "+p.token)
+	authorizationHeaderValue := fmt.Sprintf("Bearer %v", p.token)
+	req.Header.Add("Authorization", authorizationHeaderValue)
 	req.Header.Add("Content-Type", "application/json")
 
 	res, err := client.Do(req)
